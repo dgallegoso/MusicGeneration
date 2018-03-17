@@ -4,13 +4,24 @@ import os
 
 
 DATA_DIR = 'dev'
+TEST_DIR = 'test'
 CACHE_DIR = 'cache'
 
 
-def generate_dataset():
+def generate_dataset(dir, timesteps):
+    if dir == 'dev':
+        directory = DATA_DIR
+    else:
+        directory = TEST_DIR
     dataset = []
-    for filename in os.listdir(DATA_DIR):
-        dataset.append(decode_midi('{}/{}'.format(DATA_DIR, filename)))
+    for filename in os.listdir(directory):
+        decoding = decode_midi('{}/{}'.format(DATA_DIR, filename))
+        for subset in range(decoding.shape[0] / timesteps):
+            subDecoding = decoding[subset * timesteps:]
+            if subDecoding.shape[0] < timesteps:
+                continue
+            dec = subDecoding[:timesteps]
+            dataset.append(dec.copy().T)
     return dataset
 
 
