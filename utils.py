@@ -13,6 +13,10 @@ def generate_dataset(dir, timesteps):
         directory = DATA_DIR
     else:
         directory = TEST_DIR
+    try:
+        np.load(directory + '_CACHE.npz')
+    except:
+        pass
     dataset = []
     for filename in os.listdir(directory):
         decoding = decode_midi('{}/{}'.format(DATA_DIR, filename))
@@ -25,19 +29,38 @@ def generate_dataset(dir, timesteps):
     return dataset
 
 
-def generate_dataset_iterator():
-    for filename in os.listdir(DATA_DIR):
-        yield decode_midi('{}/{}'.format(DATA_DIR, filename))
+def generate_dataset_iterator(dir):
+    if dir == 'dev':
+        directory = DATA_DIR
+    else:
+        directory = TEST_DIR
+    try:
+        npz = np.load(directory + '_CACHE.npz')
+        arr = npz[npz.files[0]]
+        for decoding in arr:
+            yield decoding
+    except:
+        for filename in os.listdir(directory):
+            if filename.endswith('.mid'):
+                yield decode_midi('{}/{}'.format(directory, filename))
+
 
 def save_decoding(decoding, filename):
     encode_midi(decoding, filename)
 
 
 def main():
-    timesteps = float('inf')
-    for x in generate_dataset_iterator():
-        timesteps = min(timesteps, x.shape[0])
-        print timesteps, x.shape[0]
+    counter = 0
+    allx = []
+    for x in generate_dataset_iterator('dev'):
+        counter += 1
+        print counter
+        allx.append(x)
+    np.savez(DATA_DIR + '_CACHE.npz', allx)
+    allx = []
+    for x in generate_dataset_iterator('test'):
+        allx.append(x)
+    np.savez(TEST_DIR + '_CACHE.npz', allx)
 
 if __name__== "__main__":
   main()

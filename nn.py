@@ -2,11 +2,15 @@ import tensorflow as tf
 from tensorflow.contrib import rnn
 import numpy as np
 from utils import generate_dataset_iterator, save_decoding
+import progressbar
 
 # Network Parameters
 num_input = 128*2 + 100
 timesteps = 100
 num_hidden = 50 # hidden layer num of features
+beta = .003
+epochs = 20
+filename = 'out'
 
 
 def initialize_nn():
@@ -64,10 +68,13 @@ def run_nn():
         # Run the initializer
         sess.run(init)
         step = 0
-        skips = 0
-        while True:
-            for decoding in generate_dataset_iterator():
+        bar = progressbar.ProgressBar(redirect_stdout=True, max_value=progressbar.UnknownLength)
+        for epoch in range(epochs):
+            devError = 0
+            step = 0
+            for decoding in generate_dataset_iterator('dev'):
                 step += 1
+                bar.update(step)
                 for subset in range(decoding.shape[0] / timesteps):
                     subDecoding = decoding[subset * timesteps:]
                     if subDecoding.shape[0] < timesteps:
@@ -77,32 +84,41 @@ def run_nn():
                     batch_y = np.array([np.concatenate([np.zeros((1,num_input)), dec[1:]], axis=0)])
                     sess.run(train_op, feed_dict={X: batch_x, Y: batch_y})
                     loss = sess.run([loss_op], feed_dict={X: batch_x, Y: batch_y})
-                    print("Step " + str(step) + '.' + str(subset) +  ", Minibatch Loss= " + \
-                          "{}".format(loss))
-            skips -= 1
-            if skips > 0:
-                continue
-            filename = raw_input('Filename for new generated music: ')
-            if filename:
-                fake = None
-                for decoding in generate_dataset_iterator():
-                    fake = decoding
-                    break
-                decoding = fake[:timesteps]
-                print 'timesteps:', timesteps
-                print 'Decoding:', decoding.shape
-                s = ''
-                for i in range(timesteps):
-                    batch_x = np.array([np.copy(decoding)])
-                    batch_y = np.array([np.concatenate([np.zeros((1,num_input)), decoding[1:]], axis=0)])
-                    pred = sess.run(prediction, feed_dict={X: batch_x, Y: batch_y})
-                    newFrame = np.round(pred[0][-1])
-                    s += str(newFrame.shape)
-                    decoding = np.concatenate([decoding[1:], [newFrame]], axis=0)
-                print s
-                print 'Decoding:', decoding.shape
-                save_decoding(decoding, filename)
-            skips = int(raw_input('Number of epochs before next prompt? '))
+                    devError = devError * (1-beta) + beta * float(loss[0])
+                    # print "Step " + str(step) + '.' + str(subset) +  ", Minibatch Loss= " + "{}".format(loss)
+            testError = []
+            for decoding in generate_dataset_iterator('test'):
+                step += 1
+                bar.update(step)
+                for subset in range(decoding.shape[0] / timesteps):
+                    subDecoding = decoding[subset * timesteps:]
+                    if subDecoding.shape[0] < timesteps:
+                        continue
+                    dec = subDecoding[:timesteps]
+                    batch_x = np.array([np.copy(dec)])
+                    batch_y = np.array([np.concatenate([np.zeros((1,num_input)), dec[1:]], axis=0)])
+                    loss = sess.run([loss_op], feed_dict={X: batch_x, Y: batch_y})
+                    testError.append(float(loss[0]))
+            testError = np.mean(testError)
+            print 'Epoch {}: Dev Error = {}, Test Error = {}'.format(epoch, devError, testError)
+            fake = None
+            for decoding in generate_dataset_iterator('dev'):
+                fake = decoding
+                break
+            decoding = fake[:timesteps]
+            # print 'timesteps:', timesteps
+            # print 'Decoding:', decoding.shape
+            # s = ''
+            for i in range(timesteps):
+                batch_x = np.array([np.copy(decoding)])
+                batch_y = np.array([np.concatenate([np.zeros((1,num_input)), decoding[1:]], axis=0)])
+                pred = sess.run(prediction, feed_dict={X: batch_x, Y: batch_y})
+                newFrame = np.round(pred[0][-1])
+                # s += str(newFrame.shape)
+                decoding = np.concatenate([decoding[1:], [newFrame]], axis=0)
+            # print s
+            # print 'Decoding:', decoding.shape
+            save_decoding(decoding, filename + epoch + '.mid')
 
 
 def main():
