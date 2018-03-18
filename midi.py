@@ -66,16 +66,19 @@ def decode_midi_2(midi, resolution):
             numFullShifts = int(np.ceil(counter/float(NUM_TIME_SHIFTS)))
             for _ in range(numFullShifts-1):
                 temp = emptyBucket.copy()
-                temp[-2] = 1
+                # temp[-2] = 1
+                temp[-1] = 1
                 decoding.append(temp)
             counter -= (numFullShifts - 1) * NUM_TIME_SHIFTS
         if np.sum(bucket) > 0 and counter > 0:
-            if counter > 1:
-                bucket[2*NUM_NOTES + counter - 2] = 1
+            # if counter > 1:
+                # bucket[2*NUM_NOTES + counter - 2] = 1
+            bucket[2*NUM_NOTES + counter - 1] = 1
             decoding.append(bucket)
             bucket = emptyBucket.copy()
             counter = 0
-    bucket[2*NUM_NOTES + int(time/resolution)] = 1
+    # bucket[2*NUM_NOTES + int(time/resolution)] = 1
+    bucket[2*NUM_NOTES + int(time/resolution) + 1] = 1
     decoding.append(bucket)
     return np.array(decoding)
 

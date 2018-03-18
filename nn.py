@@ -10,7 +10,9 @@ timesteps = 100
 num_hidden = 50 # hidden layer num of features
 beta = .003
 epochs = 20
+threshold = .5
 filename = 'out'
+prob_1 = 0.0087827912566791136
 
 
 def initialize_nn():
@@ -106,19 +108,22 @@ def run_nn():
                 fake = decoding
                 break
             decoding = fake[:timesteps]
-            # print 'timesteps:', timesteps
-            # print 'Decoding:', decoding.shape
-            # s = ''
             for i in range(timesteps):
                 batch_x = np.array([np.copy(decoding)])
                 batch_y = np.array([np.concatenate([np.zeros((1,num_input)), decoding[1:]], axis=0)])
                 pred = sess.run(prediction, feed_dict={X: batch_x, Y: batch_y})
-                newFrame = np.round(pred[0][-1])
-                # s += str(newFrame.shape)
+                newFrame = pred[0][-1]
+                on = np.argmax(newFrame[:128])
+                off = np.argmax(newFrame[128:2*128])
+                shift = np.argmax(newFrame[2*128:])
+                newFrame = np.zeros(2*128 + 100)
+                newFrame[on] = 1
+                newFrame[128+off] = 1
+                newFrame[2*128 + shift] = 1
+                # newFrame[newFrame > threshold] = 1
+                # newFrame[newFrame <= threshold] = 0
                 decoding = np.concatenate([decoding[1:], [newFrame]], axis=0)
-            # print s
-            # print 'Decoding:', decoding.shape
-            save_decoding(decoding, filename + epoch + '.mid')
+            save_decoding(decoding, filename + str(epoch) + '.mid')
 
 
 def main():

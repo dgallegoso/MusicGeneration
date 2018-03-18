@@ -39,6 +39,8 @@ def generate_dataset_iterator(dir):
         arr = npz[npz.files[0]]
         for decoding in arr:
             yield decoding
+    except GeneratorExit:
+        pass
     except:
         for filename in os.listdir(directory):
             if filename.endswith('.mid'):
