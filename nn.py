@@ -9,7 +9,7 @@ num_input = 128*2 + 100
 timesteps = 100
 num_hidden = 50 # hidden layer num of features
 beta = .003
-epochs = 20
+epochs = 100
 threshold = .5
 filename = 'out'
 prob_1 = 0.0087827912566791136
@@ -49,8 +49,8 @@ def initialize_nn():
     logits = RNN(X, weights, biases)
     prediction = tf.nn.sigmoid(logits)
     # Define loss and optimizer
-    loss_op = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(
-        logits=logits, labels=Y))
+    loss_op = tf.reduce_mean(tf.nn.weighted_cross_entropy_with_logits(
+        logits=logits, targets=Y, pos_weight=1/prob_1))
     optimizer = tf.train.AdamOptimizer()
     train_op = optimizer.minimize(loss_op)
     # Evaluate model (with test logits, for dropout to be disabled)
@@ -113,6 +113,7 @@ def run_nn():
                 batch_y = np.array([np.concatenate([np.zeros((1,num_input)), decoding[1:]], axis=0)])
                 pred = sess.run(prediction, feed_dict={X: batch_x, Y: batch_y})
                 newFrame = pred[0][-1]
+                # print newFrame
                 on = np.argmax(newFrame[:128])
                 off = np.argmax(newFrame[128:2*128])
                 shift = np.argmax(newFrame[2*128:])
